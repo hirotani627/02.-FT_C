@@ -7,7 +7,7 @@ namespace FT.C
 {
 
     /// <summary>
-    /// ユーザー権限　インターフェース
+    /// ユーザー権限　インターフェースa
     /// </summary>
     public interface IAuthority
     {
