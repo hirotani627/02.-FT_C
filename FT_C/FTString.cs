@@ -1,0 +1,554 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace FT.C
+{
+    /// <summary>
+    /// 文字制御クラス
+    /// </summary>
+    public class FTString
+    {
+
+        #region<関数 フルパスから一番深いフォルダーパスを取得>
+
+        /// <summary>
+        /// フルパスから一番深いフォルダーパスを取得
+        /// </summary>
+        /// <param name="orignal">フルパス</param>
+        /// <remarks>
+        /// </remarks>
+        public static string GetDirectoryName(string orignal)
+        {
+
+            return System.IO.Path.GetDirectoryName(orignal);
+        }
+
+        #endregion
+
+        #region<関数 切り取り>
+
+        /// <summary>
+        /// 抜き取り
+        /// </summary>
+        /// <param name="orignal"></param>
+        /// <param name="start"></param>
+        /// <param name="length"></param>
+        /// <returns></returns>
+        public static string Substring(string orignal, int start, int length)
+        {
+            if (orignal.IsNullOrEmpty()) return null;
+            //if (orignal.Length < start) return null;
+            if ( length >= (orignal.Length + start)) return orignal;
+            
+            return orignal.Substring(start, length); ;
+        }
+
+        /// <summary>
+        /// 指定の文字で分割する(ヒットなしならそのまま返す)
+        /// </summary>
+        /// <param name="orignal"></param>
+        /// <param name="cutPoint"></param>
+        /// <param name="IsFast">True:先頭部分　False:後半部分</param>
+        /// <returns></returns>
+        public static string Cut(string orignal, string cutPoint, bool IsFast)
+        {
+            int i = orignal.IndexOf(cutPoint);
+
+            if (i < 0)
+                return orignal;     // ヒットなし
+
+            int point = i + cutPoint.Length;
+            if (IsFast)
+                return orignal.Remove(i);
+            else
+                return orignal.Substring(point, orignal.Length - 0 - point);
+        }
+
+        /// <summary>
+        /// 末尾から指定文字を検索し、先頭部分の文字を抜き取る
+        /// </summary>
+        /// <param name="orignal">元の文字列</param>
+        /// <param name="cutPoint">ここで指定した文字以降を削除する</param>
+        /// <remarks>
+        /// （例）
+        /// CutStrings(@"C:abc\def\g.exe",@"\");  // 戻り値はC:abc\def"
+        /// </remarks>
+        public static string GetString_Front(string orignal, string cutPoint)
+        {
+            if (orignal == null)
+                return "";
+
+            int i = orignal.LastIndexOf(cutPoint);
+            if (-1 >= i)
+            {
+                return orignal;
+            }
+
+            return orignal.Remove(i);
+        }
+
+        /// <summary>
+        /// 末尾から指定文字を検索し、ヒットした部分より後ろを抜き取る
+        /// </summary>
+        /// <param name="orignal">元の文字列</param>
+        /// <param name="cutString">ここで指定した文字以降を削除する</param>
+        /// <remarks>
+        /// （例）
+        /// GetString_End(@"C:abc\def\g.exe",@".");  // 戻り値は"exe"
+        /// </remarks>
+        public static string GetString_End(string orignal, string cutString)
+        {
+            if (orignal == null)
+                return "";
+
+            int i = orignal.LastIndexOf(cutString);
+            return orignal.Remove(0, i + cutString.Length);
+        }
+
+        #endregion
+
+        #region<関数 終端のターミナルコードを削除>
+
+        /// <summary>
+        /// 終端のターミナルコードを削除
+        /// </summary>
+        /// <param name="receivedData"></param>
+        /// <param name="mode"></param>
+        /// <returns></returns>
+        public static string DeleteTerminal(string receivedData, bool mode = false)
+        {
+            var c = receivedData.ToCharArray();
+
+            bool hit = false;
+
+
+            int Cout = 0;
+
+            if (!mode)
+            {
+                if (('n' == c[c.Length - 2]) || ('r' == c[c.Length - 2]))
+                {
+                    if ('\\' == c[c.Length - 3])
+                    {
+                        hit = true;
+                        Cout += 2;
+                    }
+                }
+                if (('n' == c[c.Length - 4]) || ('r' == c[c.Length - 4]))
+                {
+                    if ('\\' == c[c.Length - 5])
+                    {
+                        hit = true;
+                        Cout += 2;
+                    }
+                }
+
+                if (hit)
+                {
+                    return receivedData.Remove(receivedData.Length - Cout - 1);
+                }
+
+            }
+            else
+            {
+                if (('\n' == c[c.Length - 1]) || ('\r' == c[c.Length - 1]))
+                {
+                    hit = true;
+                    Cout += 1;
+                }
+                if (('\n' == c[c.Length - 2]) || ('\r' == c[c.Length - 2]))
+                {
+                    hit = true;
+                    Cout += 1;
+                }
+
+                if (hit)
+                {
+                    return receivedData.Remove(receivedData.Length - Cout);
+                }
+            }
+
+            return receivedData;
+
+        }
+
+        #endregion
+
+        #region<関数 先端の改行コードを削除>
+
+        /// <summary>
+        /// 先頭の改行コードを削除
+        /// </summary>
+        /// <param name="receivedData">オリジナル文字列</param>
+        /// <returns></returns>
+        public static string DeleteEnter_Fast(string receivedData)
+        {
+            if (string.IsNullOrEmpty(receivedData))
+                return null;
+
+            var c = receivedData.ToCharArray();
+
+            bool hit = false;
+            int Cout = 0;
+
+            if (('\n' == c[0]) || ('\r' == c[0]))
+            {
+                hit = true;
+                Cout += 1;
+            }
+
+            if (('\n' == c[0]) || ('\r' == c[0]))
+            {
+                hit = true;
+                Cout += 1;
+            }
+
+            if ('\\' == c[0])
+            {
+                hit = true;
+                Cout += 1;
+            }
+            if (hit)
+            {
+                return receivedData.Substring(Cout, receivedData.Length - Cout);
+            }
+            return receivedData;
+        }
+
+        #endregion
+
+        #region<関数 終端の改行コードを削除>
+
+        /// <summary>
+        /// 終端の改行コードを削除
+        /// </summary>
+        /// <param name="receivedData">オリジナル文字列</param>
+        /// <returns></returns>
+        public static string DeleteEnter(string receivedData)
+        {
+            if (string.IsNullOrEmpty(receivedData))
+                return null;
+
+            var c = receivedData.ToCharArray();
+
+            bool hit = false;
+
+            if ('\\' == c[c.Length - 1])
+            {
+                hit = true;
+            }
+            if (hit)
+            {
+                return receivedData.Remove(receivedData.Length - 1);
+            }
+            return receivedData;
+        }
+
+        #endregion
+
+        #region<関数 数字に置き換え>
+
+        /// <summary>
+        /// 文字から数字に置き換える
+        /// </summary>
+        /// <param name="passNotNumber">数値以外の文字を"-1"としてあつかう</param>
+        /// <param name="FileNames"></param>
+        /// <returns>ファイル名が不正なら-1を返す</returns>
+        public static int[] NumberToString(string[] FileNames, bool passNotNumber)
+        {
+            // 文字から数字に置き換える
+            double num;
+            int[] iFileNo;                                      // ファイル番号（数字置き換え用）
+            List<int> liFileNo = new List<int>();
+            for (int i = 0; i < FileNames.Length; i++)
+            {
+                if (double.TryParse(FileNames[i], out num))
+                    liFileNo.Add((int)num);                   // 数字に変換可能の場合
+                else
+                {
+                    if (!passNotNumber)
+                    {
+                        liFileNo.Add(-1);                      // 数字に変換不可の場合
+                    }
+                }
+            }
+
+            iFileNo = new int[liFileNo.Count];
+            liFileNo.CopyTo(iFileNo);
+            liFileNo.Clear();
+            liFileNo = null;
+            return iFileNo;
+        }
+
+
+
+        /// <summary>
+        /// 文字から数字に置き換える
+        /// </summary>
+        /// <param name="stringValue"></param>
+        /// <param name="Value"></param>
+        public static bool NumberToString(string stringValue, out double Value)
+        {
+            // 文字から数字に置き換える
+            if (!double.TryParse(stringValue, out Value))
+            {
+                return false;
+            }
+            return true;
+        }
+
+
+        #endregion
+
+        #region<関数 byte配列から16進数文字列に変換>
+
+        /// <summary>
+        /// byte配列から16進数文字列に変換
+        /// </summary>
+        /// <param name="b"></param>
+        /// <returns>区切りにハイフンが付きます</returns>
+        public static string ByteToString(byte[] b)
+        {
+            string s = BitConverter.ToString(b);
+            return s;
+        }
+
+        #endregion
+
+        #region<関数 指定文字を消す>
+
+        /// <summary>
+        /// 指定文字を消す
+        /// </summary>
+        /// <param name="s">オリジナル文字</param>
+        /// <param name="rplase">消したい文字</param>
+        /// <returns></returns>
+        public static string Replase(string s, string rplase)
+        {
+            return s.Replace(rplase, string.Empty);
+        }
+
+        /// <summary>
+        /// 空文字を消す
+        /// </summary>
+        /// <returns></returns>
+        public static string ReplaseZero(string mozi)
+        {
+            int i = mozi.IndexOf('\0');
+            if (i < 0)
+                return mozi;
+
+            return mozi.Remove(i, mozi.Length - i);
+          
+        }
+
+        #endregion
+
+        #region<関数 文字検索>
+
+        /// <summary>
+        /// 指定文字が含まれているかを返す
+        /// </summary>
+        /// <param name="target">オリジナル文字</param>
+        /// <param name="word">検索文字</param>
+        /// <returns></returns>
+        public static bool HasString(string target, string word)
+        {
+            if ((word == string.Empty) | (word == "") | (target == string.Empty))
+                return false;
+
+            if (target.IndexOf(word) >= 0)
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 文字の出現回数をカウント 
+        /// </summary>
+        /// <param name="orignal">オリジナル文</param>
+        /// <param name="check">チェック文字</param>
+        /// <returns></returns>
+        public static int CountMozi(string orignal, string check)
+        {
+            return orignal.Length - orignal.Replace(check.ToString(), "").Length;
+        }
+
+        /// <summary>
+        /// 指定文字が存在しているか検索
+        /// </summary>
+        /// <param name="text">オリジナル文字列</param>
+        /// <param name="target">検索文字</param>
+        /// <param name="Point">文字位置</param>
+        /// <returns>True:文字がが存在　False:存在しない</returns>
+        public static bool IndexOf(string text, string target, out int Point)
+        {
+            Point = 0;
+            if (string.IsNullOrWhiteSpace(text))
+                return false;
+
+            Point = text.IndexOf(target);
+
+            if (Point >= 0)
+                return true;
+            else
+                return false;
+        }
+
+        #endregion
+
+        #region<関数 指定文字を削除する>
+
+        /// <summary>
+        /// 指定文字を削除する
+        /// </summary>
+        /// <param name="target"></param>
+        /// <param name="word"></param>
+        /// <returns></returns>
+        public static string Delete(string target, string word)
+        {
+            if (string.IsNullOrEmpty(word))
+                return target;
+
+            if (string.IsNullOrEmpty(target))
+                return string.Empty;
+
+            return target.Replace(word, "");
+        }
+
+        #endregion
+
+        #region<関数 ファイルパスからファイル名のみを抽出>
+
+
+        /// <summary>
+        /// ファイルパスからファイル名のみを抽出
+        /// </summary>
+        /// <param name="FilesPass"></param>
+        /// <returns></returns>
+        public static string[] GetFileName(string[] FilesPass)
+        {
+            return DIR.GetFolderName(FilesPass);
+        }
+
+
+        /// <summary>
+        /// ファイルパスからファイル名のみを抽出
+        /// </summary>
+        /// <param name="filesPass"></param>
+        /// <returns></returns>
+        public static string GetFileNameToFullPass(string filesPass)
+        {
+            return System.IO.Path.GetFileName(filesPass);
+        }
+
+        #endregion
+
+        #region<関数 英数字のみ確認>
+
+        /// <summary>
+        /// 英数字のみ？
+        /// </summary>
+        /// <param name="target"></param>
+        /// <returns></returns>
+        public static bool IsAlphanumeric(string target)
+        {
+            return new System.Text.RegularExpressions.Regex("^[0-9a-zA-Z-]+$").IsMatch(target);
+        }
+
+        #endregion
+
+        #region<関数 空配列データを削除>
+
+        /// <summary>
+        /// 空配列データを削除
+        /// </summary>
+        /// <param name="sLotNos">元配列データ</param>
+        /// <returns></returns>
+        public static string[] DeletNullOrEmpty(string[] sLotNos)
+        {
+            if (sLotNos == null)
+                return null;
+
+            List<string> ss = new List<string>();
+
+            for (int i = 0; i < sLotNos.Length; i++)
+            {
+                if (!string.IsNullOrEmpty(sLotNos[i]))
+                    ss.Add(sLotNos[i]);
+            }
+
+            return ss.ToArray();
+        }
+
+        #endregion
+
+        #region<関数 指定文字で埋める>
+
+        /// <summary>
+        /// 指定文字で埋める
+        /// </summary>
+        /// <param name="org">オリジナル</param>
+        /// <param name="LengthCount">全体の長さ</param>
+        /// <param name="cAdd">埋める文字</param>
+        /// <param name="IsFront">true;先頭に追加 false:後ろに追加</param>
+        /// <returns></returns>
+        public static string SetLength(string org, int LengthCount, char cAdd , bool IsFront = true)
+        {
+            if (org == null) return null;
+            if (LengthCount <= org.Length) return org;
+
+            string sA = string.Empty;
+            int AddCout = LengthCount - org.Length;
+            for (int i = 0; i < AddCout; i++)
+            {
+                sA += cAdd;
+            }
+
+            if(IsFront)
+                return sA + org;
+            else
+                return org + sA;
+        }
+
+        /// <summary>
+        /// 指定文字で埋める
+        /// </summary>
+        /// <param name="org">オリジナル</param>
+        /// <param name="LengthCount">全体の長さ</param>
+        /// <param name="cAdd">埋める文字</param>
+        /// <param name="IsFront">true;先頭に追加 false:後ろに追加</param>
+        /// <returns></returns>
+        public static string SetLength(int org, int LengthCount, char cAdd, bool IsFront = true)
+        {
+            return SetLength(org.ToString(), LengthCount, cAdd, IsFront);
+        }
+
+        #endregion
+
+    }
+
+    /// <summary>
+    /// 拡張メゾット定義
+    /// </summary>
+    public static class StringExtensions
+    {
+        /// <summary>
+        /// 指定された文字列が null または System.String.Empty 文字列であるかどうかを示します。
+        /// </summary>
+        /// <param name="str">判定文字</param>
+        /// <returns></returns>
+        public static bool IsNullOrEmpty(this string str)
+        {
+            return string.IsNullOrEmpty(str);
+        }
+    }
+
+
+}

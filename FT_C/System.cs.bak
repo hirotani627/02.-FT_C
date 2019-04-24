@@ -1,0 +1,166 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace FT.C
+{
+    /// <summary>
+    /// FTシステムクラス
+    /// </summary>
+    public class FTSystem
+    {
+
+        /// <summary>マシンデータフォルダ名</summary>
+        public static string PassMachineData = @"\DATA_Machine";
+
+        /// <summary>品種データフォルダ名</summary>
+        public static string PassPecipeData = @"\DATA_Recipie";
+
+        /// <summary>WBマシンデータフォルダ名</summary>
+        public static string PassMachineDataWB = @"\MachineWB";
+
+        /// <summary>開発用フォーテクノスフォルダーパス</summary>
+        public const string PassFTPass_CS = @"\FourTechnos(C#)";
+
+        /// <summary>EXEフォルダーパス</summary>
+        public const string Pass_EXE = @"\EXE";
+
+        /// <summary>認識ルートフォルダ</summary>
+        public const string Pass_RECOG = @"\Recognition";
+
+        /// <summary>認識アプリフォルダ</summary>
+        public const string Pass_RecWPF_APP = @"\FT_RecoWPF";
+
+        /// <summary></summary>
+        public const string FOLDER_MACHINE = @"\DATA_Machine";
+
+        /// <summary></summary>
+        public const string FOLDER_RECIPIE = @"\DATA_Recipie";
+
+
+        #region<関数 EXEを実行しているファイルパスを取得>
+
+        /// <summary>
+        /// EXEを実行しているファイルパスを取得 (GetExeFilePassを使ってください)
+        /// </summary>
+        /// <returns></returns>
+        [System.ObsoleteAttribute]
+        public static string GetEXELootPass()
+        { 
+            string pass = System.Windows.Forms.Application.ExecutablePath;
+            pass = FTString.GetString_Front(pass, @"\");                                             // ファイルパスのみにする
+            return pass;
+        }
+
+        /// <summary>
+        /// EXEを実行しているファイルパスを取得 (GetExeFilePassを使ってください)
+        /// </summary>
+        /// <param name="p"></param>
+        /// <returns></returns>
+        [System.ObsoleteAttribute]
+        public static string GetEXELootPass(string p)
+        {
+            string pass = System.Windows.Forms.Application.ExecutablePath;
+            return FTString.GetDirectoryName(pass);
+        }
+
+        /// <summary>
+        /// EXEを実行しているファイルパスを取得
+        /// </summary>
+        /// <returns></returns>
+        public static string GetExeFilePass()
+        {
+            string pass = System.Windows.Forms.Application.ExecutablePath;
+            return FTString.GetDirectoryName(pass);
+        }
+
+        #endregion
+
+        #region<関数 マイドキュメントパスを取得>
+
+        /// <summary>
+        /// マイドキュメントパスを取得
+        /// </summary>
+        /// <returns></returns>
+        public static string GetMyDocmentPass()
+        {
+            return System.Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);      // マイドキュメントを取得
+        }
+
+        #endregion
+
+        #region<関数 デスクトップパスを取得>
+
+        /// <summary>
+        /// デスクトップパスを取得する
+        /// </summary>
+        /// <returns></returns>
+        public static string GetDesktopPass()
+        {
+            string desktop = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+            return desktop;
+        }
+
+
+        #endregion
+
+        #region<関数 FourTechnosパスを取得>
+
+        /// <summary>
+        /// FourTechnosパスを取得(C#)開発用
+        /// </summary>
+        /// <returns></returns>
+        public static string GetFTPass_CS()
+        {
+            return System.Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments) + PassFTPass_CS;
+        }
+
+        #endregion
+
+        #region<関数　exeを起動>
+
+        /// <summary>
+        /// アプリケーションをキック（exeを起動）
+        /// </summary>
+        /// <param name="Path"></param>
+        /// <returns></returns>
+        public static bool ApriExec(string Path)
+        {
+
+            // ファイルパスがない？
+            if ("" == Path) return false;
+
+            try
+            {
+                System.Diagnostics.Process.Start(Path);
+                return true;
+
+            }
+            catch
+            {
+
+                return false;
+
+            }
+
+        }
+
+        #endregion
+
+        #region<関数　年月日時分秒を取得>
+
+        /// <summary>
+        /// 年月日時分秒を取得
+        /// </summary>
+        /// <returns></returns>
+        public static string GetTime()
+        {
+            System.DateTime tim = System.DateTime.Now;
+            return tim.Year.ToString() + tim.Month + tim.Day + tim.Hour + tim.Minute + tim.Second;
+        }
+
+        #endregion
+        
+    }
+}

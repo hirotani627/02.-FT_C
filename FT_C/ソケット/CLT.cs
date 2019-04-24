@@ -1,0 +1,359 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Net;
+using System.Net.Sockets;
+using System.Threading;
+
+namespace FT.C
+{
+
+	/// <summary>
+	/// ソケット通信（クライアント）クラス
+	/// </summary>
+	/// 
+	/// <remarks>
+	/// ソケット通信処理群
+	/// 
+	/// Ver1.00  2012-04-05  リリース    H.Sato
+	/// 
+	/// [ 例外リスト ]
+	/// 001.通信開始に失敗した
+	/// 002.データの送信に失敗した
+	/// 
+	/// </remarks>
+	///
+	public class CLT : IDisposable
+	{
+
+        #region<デリゲート>
+
+        /// <summary>クライアントが接続した</summary>
+        public delegate void dlgConnect(EndPoint PortNo);
+
+		/// <summary>データを受信した</summary>
+		public delegate void dlgRev(string RevStr);
+
+		/// <summary>クライアントが切断した</summary>
+		public delegate void dlgDisConnect(EndPoint PortNo);
+
+		/// <summary>システムエラーが発生した</summary>
+		public delegate void dlgError(string ErrStr);
+
+        #endregion
+
+        #region<イベント>
+
+        /// <summary>クライアントが接続した</summary>
+        public event dlgConnect		onConnect = null;
+
+		/// <summary>データを受信した</summary>
+		public event dlgRev			onRecive = null;
+
+		/// <summary>クライアントが切断した</summary>
+		public event dlgDisConnect	onDisConnect = null;
+
+		/// <summary>システムエラーが発生した</summary>
+		public event dlgError		onError = null;
+
+        #endregion
+
+        #region<変数>
+
+        /// <summary>ソケット情報</summary>
+        private SoketInfo mSoketInfo;
+
+        /// <summary>自クラス名</summary>
+		private string MY_CLASS;
+
+        /// <summary>クライアントオブジェクト</summary>
+		private TcpClient mClient = null;
+
+        /// <summary>クライアントのスレッドオブジェクト</summary>
+		private Thread mThreadClient = null;
+
+        /// <summary>Uniコード</summary>
+		private Encoding UniCode = Encoding.GetEncoding("utf-16");
+
+        /// <summary>Shif-jisコード</summary>
+		private Encoding SJisCode = Encoding.GetEncoding("shift-jis");
+
+        #endregion
+
+        #region<プロパティ>
+
+        /// <summary>
+        /// 接続中？
+        /// </summary>
+        public bool IsConnect
+        {
+            get; private set;
+        }
+
+        #endregion
+
+        #region<スレッド　受信処理>
+
+        /// <summary>
+        /// 受信スレッド
+        /// </summary>
+        private void ThreadRecive()
+        {
+
+            Byte[] Rev1Byte = new Byte[1];
+            Byte[] RevByte = new Byte[Socket.SCK_REV_BUFSIZE];
+            Byte[] RevNeed;
+            Byte[] RevUni;
+            int iLp1;
+            int nPt = 0;
+            string RevStr;
+
+            while (true)
+            {
+
+                try
+                {
+                    // クライアントのソケットを用意
+                    mClient = new TcpClient(mSoketInfo.IP,  mSoketInfo.Port);      // (ソケット自ノードループバック用ＩＰアドレス ,ソケットポート番号オフセット アプリ番号）
+                    break;
+                }
+                catch (System.Net.Sockets.SocketException)
+                {
+                    /*--- サーバーがリッスン状態になっていない ---*/
+                    Thread.Sleep(500);
+                }
+                catch (System.Exception exp)
+                {
+                    /*--- その他のエラー ---*/
+
+                    // システムエラーイベント発行
+                    if (null != onError)
+                    {
+                        onError(exp.Message);
+                    }
+                    return;
+                }
+            }
+
+            // サーバーと接続した事がわかる様にイベントを発行
+            if (null != onConnect)
+            {
+                onConnect(mClient.Client.LocalEndPoint);
+            }
+            IsConnect = true;
+
+            NetworkStream nStream = mClient.GetStream();
+
+            // 受信用ループ
+            while (true)
+            {
+
+                try
+                {
+                    //受信が無い場合はここで待機する
+                    //文字受信が有った場合とクライアントが接続を切った場合に
+                    //次のステップに進む
+                    int RevByteCount = nStream.Read(Rev1Byte, 0, Rev1Byte.Length);
+
+                    if (0 < RevByteCount)
+                    {
+                        /*--- １バイト受信 ---*/
+                        if (0x0D == Rev1Byte[0])
+                        {
+                            /*--- 改行コード迄、受信した ---*/
+
+                            // 必要な分だけ切り出す
+                            RevNeed = new Byte[nPt];
+
+                            for (iLp1 = 0; iLp1 < nPt; iLp1++)
+                            {
+                                RevNeed[iLp1] = RevByte[iLp1];
+                            }
+
+                            // Shift-jisからUniコードに変換
+                            RevUni = Encoding.Convert(SJisCode, UniCode, RevNeed);
+
+                            // Uniコードのバイト配列から文字列に変換する
+                            RevStr = UniCode.GetString(RevUni);
+
+                            // 受信イベント発行
+                            if (null != onRecive)
+                            {
+                                onRecive(RevStr);
+                            }
+
+                            nPt = 0;
+
+                        }
+                        else
+                        {
+                            RevByte[nPt] = Rev1Byte[0];
+                            nPt++;
+                        }
+
+                    }
+                    else
+                    {
+                        /*--- サーバーが切断 ---*/
+
+                        // サーバーが切断した事がわかる様にイベントを発行
+                        if (null != onDisConnect)
+                        {
+                            onDisConnect(mClient.Client.LocalEndPoint);
+                        }
+                        return;
+
+                    }
+                }
+                catch (System.Threading.ThreadAbortException)
+                {
+                    /*--- スレッドが破棄された ---*/
+                    return;
+                }
+                catch (System.Exception exp)
+                {
+                    /*--- その他のエラー ---*/
+
+                    // システムエラーイベント発行
+                    if (null != onError)
+                    {
+                        onError(exp.Message);
+                    }
+
+                }
+            }
+
+        }
+
+        #endregion
+
+        #region<コンストラクタ>
+
+        /// <summary>
+        /// コンストラクタ
+        /// </summary>
+        /// 
+        /// <param name="IP">IPアドレス</param>
+        /// <param name="PortNo">アプリケーション番号(0～)</param>
+        public CLT( int PortNo, string IP = Socket.SCK_IP_MYSELF)
+		{
+			MY_CLASS = typeof(CLT).Name;
+            mSoketInfo = new C.SoketInfo();
+            mSoketInfo.Port = PortNo;
+            mSoketInfo.IP = IP;
+            IsConnect = false;
+        }
+
+        #endregion
+
+        #region<Dispose>
+
+        /// <summary>
+        /// 終了処理
+        /// </summary>
+        public void Dispose()
+		{
+			Close();
+		}
+
+        #endregion
+
+        #region<関数 ソケット 接続処理>
+
+        /// <summary>
+        /// 通信開始
+        /// </summary>
+        public void Connect()
+		{
+
+			try
+            {   
+                // スレッドの作成と開始
+                mThreadClient = new Thread( new ThreadStart( ThreadRecive ) );
+                mThreadClient.Start();
+            }
+            catch( System.Exception exp ){
+ 
+                throw (new EXP(exp.Message, MY_CLASS, "001"));
+            }
+
+		}
+
+        #endregion
+
+        #region<関数 ソケット 終了処理>
+
+        /// <summary>
+        /// 本クラス破棄
+        /// </summary>
+        public void Close()
+        {
+
+            // クライアント破棄
+            if (null != mClient)
+            {
+                if (true == mClient.Connected)
+                {
+                    mClient.Close();
+                }
+
+                if (null != mThreadClient)
+                {
+                    mThreadClient.Abort();
+                    mThreadClient = null;
+                }
+            }
+        }
+
+        #endregion
+
+        #region<関数 ソケット データ送信>
+
+        /// <summary>
+        /// データ送信メソッド
+        /// </summary>
+        /// <param name="Message">送信メッセージ</param>
+        public void Send(string Message)
+		{
+			// Sift-jisに変換して送る
+            Byte[] SendByte = SJisCode.GetBytes( Message + "\r" );
+            NetworkStream nStream = null;
+
+            try
+            {
+				nStream = mClient.GetStream();
+                nStream.Write( SendByte, 0, SendByte.Length );
+            }
+            catch( System.Exception exp ){
+
+                throw (new EXP(exp.Message, MY_CLASS, "002"));  
+            }
+		}
+
+        #endregion
+
+        #region<関数 ソケット 接続情報を文字で取得>
+
+        /// <summary>
+        /// 自身（スレーブ）の情報を文字で取得
+        /// </summary>
+        /// <returns></returns>
+        public string GetInfo_This()
+        {
+            return mClient.Client.LocalEndPoint.ToString();
+        }
+
+        /// <summary>
+        /// サーバーの情報を文字で取得
+        /// </summary>
+        /// <returns></returns>
+        public string GetInfo_Server()
+        {
+            return mClient.Client.RemoteEndPoint.ToString();
+        }
+
+        #endregion
+    }
+
+}

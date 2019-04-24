@@ -1,0 +1,293 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.IO.Ports;
+
+namespace FT.C
+{
+    /// <summary>
+    /// RS_232C制御クラス
+    /// </summary>
+    public class RS_232C : IDisposable
+    {
+        /// <summary>改行コマンド</summary>
+        public const string NewLine = @"\r\n";
+
+        #region<内部変数>
+
+        /// <summary>ポート番号</summary>
+        private int mPortNo;
+
+        /// <summary>COMポート制御クラス</summary>
+        private System.IO.Ports.SerialPort serialPort1;
+
+        /// <summary>リソースが破棄(解放)されていることを表すフラグ</summary>
+        private bool disposed = false;
+
+
+        private int mBaudRate = 9600;
+        private Parity mParity = Parity.None;
+        private StopBits mStopBits = StopBits.One;
+
+        #endregion
+
+        #region<イベント定義・デリゲート・バックグラウンドワーカー>
+
+        /// <summary>データ受信デリゲート</summary>
+        public delegate void DataReceivedEventHandler(object sender, string e);
+
+        /// <summary>データ受信したイベント(※Formとは別スレッド)</summary>
+        /// <remarks>
+        /// 【フォームで使う時のサンプル】
+        /// if (this.InvokeRequired)
+        /// {
+        ///     this.Invoke((MethodInvoker)delegate()
+        ///     {
+        ///          this.txtRacive.Text = e;
+        ///     });
+        /// }
+        /// else
+        /// {
+        ///      this.txtRacive.Text = e;
+        /// }
+        /// </remarks>
+        public event DataReceivedEventHandler DataReceived = null;
+
+        #endregion
+
+        #region<プロパティ>
+
+        /// <summary>
+        /// プロパティ　受信データ（文字）
+        /// </summary>
+        public string receivedData { get; private set; }
+
+        /// <summary>
+        /// プロパティ　接続中？
+        /// </summary>
+        public bool IsConnect
+        {
+            get {
+                if (serialPort1 != null)
+                    return serialPort1.IsOpen;
+                else
+                    return false;
+            }
+        }
+
+        /// <summary>
+        /// プロパティ　エラーメッセージ
+        /// </summary>
+        public string ErrMesseage
+        {
+            get;
+            private set;
+        }
+
+        #endregion
+
+        #region<イベント　受信>
+
+        /// <summary>
+        /// 受信処理。本メソッドはFormとは別スレッドで処理されるため、
+        /// Formの値の書き換えを行う場合にはdelegateを利用してForm側のスレッドで処理させる。
+        /// </summary>
+        private void serialPort1_DataReceived(object sender, System.IO.Ports.SerialDataReceivedEventArgs e)
+        {
+            // 受信文字列の取得
+            try
+            {
+                receivedData = this.serialPort1.ReadExisting();
+
+                //　受信イベント
+                if (DataReceived != null)
+                    DataReceived(this, receivedData);
+
+                receivedData = receivedData.Replace(this.serialPort1.NewLine, "\r\n");
+            }
+            catch (Exception ex)
+            {
+                ErrMesseage = ex.Message;
+            }
+
+        }
+
+        #endregion
+
+        #region<イベント　ポートでエラーが発生>
+
+        /// <summary>
+        /// ポートでエラーが発生イベント
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        void serialPort1_ErrorReceived(object sender, SerialErrorReceivedEventArgs e)
+        {
+        }
+
+        #endregion
+
+        #region<コンストラクタ>
+
+        /// <summary>
+        /// コンストラクタ
+        /// </summary>
+        public RS_232C()
+        {
+            serialPort1 = new SerialPort();
+        }
+
+        #endregion
+
+        #region <Dispose>
+
+        /// <summary>
+        /// リソースの解放
+        /// </summary>
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        /// <summary>
+        /// リソースの解放
+        /// </summary>
+        /// <param name="disposing">マネージ リソースが破棄される場合 true、破棄されない場合は false です。</param>
+        protected void Dispose(bool disposing)
+        {
+            // 既にリソースが破棄されている場合は何もしない
+            if (disposed) return;
+
+            try
+            {
+                // 破棄されていないアンマネージリソースの解放処理
+                Close();    //切断
+                if (serialPort1 != null)
+                    serialPort1.Dispose();
+            }
+            finally
+            {
+
+            }
+            // リソースは破棄されている
+            disposed = true;
+
+        }
+
+        #endregion
+
+        #region<関数　初期化>
+
+        /// <summary>
+        /// 初期化
+        /// </summary>
+        public void Ini(int BaudRate, Parity parity ,StopBits stopBits)
+        {
+            mBaudRate = BaudRate;
+            mParity = parity;
+            mStopBits = stopBits;
+        }
+
+        #endregion
+
+        #region<関数　接続　切断>
+
+        /// <summary>
+        /// 接続
+        /// </summary>
+        /// <param name="port">使用するポート番号</param>
+        /// <returns>True:接続完了 False:失敗</returns>
+        public bool Connect(int port)
+        {
+            mPortNo = port;
+            try
+            {
+                if (serialPort1.IsOpen)
+                {
+                    ErrMesseage = "COM番号" + mPortNo.ToString() + " はすでに開かれています。";
+                    return false;
+                }
+                else
+                {
+                    this.serialPort1.PortName = "COM" + mPortNo;        // COMｘで表す
+                    this.serialPort1.BaudRate = mBaudRate;
+                    this.serialPort1.Parity = mParity;
+                    this.serialPort1.DataBits = 8;
+                    this.serialPort1.StopBits = mStopBits;
+                    this.serialPort1.Handshake = System.IO.Ports.Handshake.RequestToSend;
+                    this.serialPort1.Encoding = Encoding.UTF8;
+                    this.serialPort1.NewLine = "\r";
+                    serialPort1.Open();
+                    this.serialPort1.DataReceived += new System.IO.Ports.SerialDataReceivedEventHandler(this.serialPort1_DataReceived);
+                    this.serialPort1.ErrorReceived += new SerialErrorReceivedEventHandler(serialPort1_ErrorReceived);
+                }
+            }
+            catch (Exception ex)
+            {
+                ErrMesseage = ex.Message;
+                return false;
+            }
+             return true;
+        }
+
+        /// <summary>
+        /// 切断
+        /// </summary>
+        public void Close()
+        {
+            if (serialPort1.IsOpen)
+            {
+                serialPort1.Close();
+                this.serialPort1.DataReceived -= new System.IO.Ports.SerialDataReceivedEventHandler(this.serialPort1_DataReceived);
+                this.serialPort1.ErrorReceived -= new SerialErrorReceivedEventHandler(serialPort1_ErrorReceived);
+            }
+        }
+
+        #endregion
+
+        #region<関数　送信>
+
+        /// <summary>
+        /// 送信処理
+        /// </summary>
+        /// <param name="text">送信文字列</param>
+        public void SendStringLine(string text)
+        {
+            SendString(text + NewLine);
+        }
+
+
+        /// <summary>
+        /// 送信処理
+        /// </summary>
+        /// <param name="text">送信文字列</param>
+        public void SendString(string text)
+        {
+            try
+            {
+                this.serialPort1.Write(text);
+            }
+            catch (Exception ex)
+            {
+                ErrMesseage = ex.Message;
+            }
+        }
+
+        #endregion
+
+        #region<関数　有効なシリアルポート名一覧取得>
+
+        /// <summary>
+        /// 有効なシリアルポート名一覧取得
+        /// </summary>
+        /// <returns></returns>
+        public string[] GetEnablePort()
+        {
+            return System.IO.Ports.SerialPort.GetPortNames();
+        }
+
+        #endregion
+    }
+}

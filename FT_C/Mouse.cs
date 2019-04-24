@@ -1,0 +1,120 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Drawing;
+using System.Windows.Forms;
+
+namespace FT.C
+{
+    /// <summary>
+    /// マウス制御クラス
+    /// </summary>
+    public class Mouse
+    {
+
+        #region<列挙対　マウスの状態>
+
+        /// <summary>コントロールに対してのマウスの状態</summary>
+        public enum MouseState : int
+        {
+            /// <summary>領域外</summary>
+            [LANG("領域外", "Leave", "領域外")]
+            Leave = 0,
+
+            /// <summary>領域内</summary>
+            [LANG("領域内", "Enter", "領域内")]
+            Enter = 1,
+
+            /// <summary>クリック中</summary>
+            [LANG("クリック中", "Down", "クリック中")]
+            Down = 2,
+        }
+
+        #endregion
+
+        #region<列挙対　マウス位置の取得>
+
+        /// <summary>
+        /// マウス位置の取得（デスクトップ座標）
+        /// </summary>
+        public static Point GetPosition_DeskTop()
+        {
+            Point point;
+            point = System.Windows.Forms.Control.MousePosition;
+            return point;
+        }
+
+        /// <summary>
+        /// マウス位置の取得（アプリケーション座標）
+        /// </summary>
+        /// <param name="control">ターゲットコントロール</param>
+        public static Point GetPosition_Application(System.Windows.Forms.Control control)
+        {
+            Point point;
+            //フォーム上の座標でマウスポインタの位置を取得する
+            //画面座標でマウスポインタの位置を取得する
+            System.Drawing.Point sp = System.Windows.Forms.Cursor.Position;
+            //画面座標をクライアント座標に変換する
+            point = control.PointToClient(sp);
+            return point;
+        }
+
+        //// <summary>
+        ///// マウス位置の取得（アプリケーション内コントールに対して）
+        ///// </summary>
+        ///// <param name="control">ターゲットコントロール</param>
+        //public static Point GetPosition_Application(System.Windows.Forms.Control control int )
+        //{
+        //    Point point;
+        //    //フォーム上の座標でマウスポインタの位置を取得する
+        //    //画面座標でマウスポインタの位置を取得する
+        //    System.Drawing.Point sp = System.Windows.Forms.Cursor.Position;
+        //    //画面座標をクライアント座標に変換する
+        //    point = control.PointToClient(sp);
+        //    return point;
+        //}
+
+        #endregion
+
+        #region<列挙対　マウス位置のセット>
+
+        /// <summary>
+        /// マウス位置のセット（デスクトップ座標）
+        /// </summary>
+        /// <param name="point"></param>
+        public static void SetPosition_DeskTop(Point point)
+        {
+            System.Windows.Forms.Cursor.Position = point;
+        }
+
+        /// <summary>
+        /// マウス位置のセット（アプリケーション座標）
+        /// </summary>
+        /// <param name="point"></param>
+        /// <param name="control"></param>
+        public static void SetPosition_Application(Point point , Control control)
+        {
+            System.Drawing.Point mp = control.PointToScreen(point);
+            //マウスポインタの位置を設定する
+            System.Windows.Forms.Cursor.Position = mp;
+        }
+
+        #endregion
+
+        #region<関数　マウスカーソルの設定>
+
+        /// <summary>
+        /// マウスカーソルの設定
+        /// </summary>
+        /// <param name="f"></param>
+        /// <param name="c"></param>
+        public static void SetCursoe(Form f, Cursor c)
+        {
+            f.Cursor = c;
+        }
+
+        #endregion
+
+    }
+}
